@@ -1,0 +1,61 @@
+
+<div th:fragment="header">
+<meta charset="utf-8">
+<svg width="960" height="960" stroke="#fff" stroke-width="0.2" style="display: none;"></svg>
+<script src="https://d3js.org/d3.v4.min.js"></script>
+<script src="https://d3js.org/d3-hsv.v0.1.min.js"></script>
+<script src="https://d3js.org/d3-contour.v1.min.js"></script>
+<script>
+
+function basicComparator(first, second) {
+    return second.latLng.lat -  first.latLng.lat || first.latLng.lng - second.latLng.lng;
+}
+
+
+function callImage(){
+var svg2;
+var svg1 = d3.select("svg"),
+    width = +svg1.attr("width"),
+    height = +svg1.attr("height");
+
+    d3.json("/distancefrompoint", function(error, json) {
+
+      json = json.sort(basicComparator);
+      var actualElement = json.find(function(element) {
+        return element.duration == 0;
+       });
+        var z = new Array(json.length)
+        for (var i=0; i<json.length; i++) {
+            z[i] = json[i].duration;
+        }
+        var actual = {lat: actualElement.latLng.lat, lng: actualElement.latLng.lng};
+
+var i0 = d3.interpolateHsvLong(d3.hsv(120, 1, 1), d3.hsv(5, 1, 1)),
+    interpolateTerrain = function(t) { return t < 1 ? i0(t) : 0.99 ; },
+    color = d3.scaleSequential(interpolateTerrain).domain([0, 3600]);
+
+
+  if (error) throw error;
+    var dimens = Math.sqrt(json.length);
+  svg1.selectAll("path")
+    .data(d3.contours().size([dimens, dimens])
+        .thresholds(d3.range(Math.min(...z) - 1000, Math.max(...z) + 1000, 100))
+      (z))
+    .enter().append("path")
+    //.attr("d", d3.geoPath(d3.geoIdentity().scale(width / dimens).translate([actual.lat, actual.lng])))
+    .attr("d", d3.geoPath(d3.geoAlbers()
+       .scale(100000)
+       .translate([width/2, height/2])
+       .center([actual.lat, actual.lng])))
+    .attr("fill", function(d) { return color(d.value); });
+
+    var svgString = new XMLSerializer().serializeToString(document.querySelector('svg'));
+    var DOMURL = self.URL || self.webkitURL || self;
+    svg2 = new Blob([svgString], {type: "image/svg+xml;charset=utf-8"});
+    var url = DOMURL.createObjectURL(svg2);
+    initMap(url, actual);
+    });
+}
+</script>
+
+</div>
